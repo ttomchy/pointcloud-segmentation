@@ -11,8 +11,12 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/common/common.h>
+#include "opencv2/core/core.hpp"
+#include "opencv2/highgui/highgui.hpp"
 
-
+using namespace cv;
+using namespace std;
 
 
 typedef pcl::PointXYZ PointT;
@@ -23,6 +27,15 @@ boost::shared_ptr<pcl::visualization::PCLVisualizer>
 simpleVis (pcl::PointCloud<pcl::PointXYZ>::ConstPtr cloud);
 boost::shared_ptr<pcl::visualization::PCLVisualizer> customColourVis
         (pcl::PointCloud<pcl::PointXYZ>::ConstPtr cloud);
+
+
+//determine the cell of the grid map
+
+int cell_num_x=500;
+int cell_num_y=500;
+double m_per_cell_=0.01;
+
+
 
 int
 main (int argc, char** argv)
@@ -51,6 +64,18 @@ main (int argc, char** argv)
     std::cerr << "PointCloud has: " << cloud->points.size () << " data points." << std::endl;
 
 
+    //get the max and min of the input cloud
+
+
+    pcl::PointXYZ minPt, maxPt;
+    pcl::getMinMax3D (*cloud, minPt, maxPt);
+    std::cerr << "Max x: " << maxPt.x << std::endl;
+    std::cerr << "Max y: " << maxPt.y << std::endl;
+    // std::cout << "Max z: " << maxPt.z << std::endl;
+    std::cerr << "Min x: " << minPt.x << std::endl;
+    std::cerr << "Min y: " << minPt.y << std::endl;
+    // std::cout << "Min z: " << minPt.z << std::endl;
+
 
     //create the filtering object
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
@@ -58,11 +83,11 @@ main (int argc, char** argv)
     sor.setMeanK(25);
     sor.setStddevMulThresh(1.0);
     sor.filter(*cloud_filtered);
-    std::cout<<"cloud after filtering:"<<std::endl;
+    std::cerr<<"cloud after filtering:"<<std::endl;
     std::cerr<<*cloud_filtered<<std::endl;
 
     //  writer.write<pcl::PointXYZ>("split_map3d_inliers.pcd",*cloud_filtered,false);
-    std::cout<<"the size of the in-lier points is:"<<cloud_filtered->points.size ()<<std::endl;
+    std::cerr<<"the size of the in-lier points is:"<<cloud_filtered->points.size ()<<std::endl;
 
     pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
     pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
@@ -111,7 +136,6 @@ main (int argc, char** argv)
               << cloud_filtered->points.size () << " data points." << std::endl;
 
 
-//reader.read ("table_scene_lms400.pcd", *cloud);
 
 
 
@@ -147,12 +171,16 @@ main (int argc, char** argv)
     }
 
 
+   std::cerr<<"the ending"<<std::endl;
+
+ // On the top we have got the non ground data and split the non-ground data into different clusters
 
 
 
 
 
-   std::cout<<"the ending"<<std::endl;
+
+
 
 
 

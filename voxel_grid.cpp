@@ -1,30 +1,38 @@
 #include <iostream>
-#include<pcl/io/pcd_io.h>
-#include<pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
-int main() {
+int
+main (int argc, char** argv)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
 
-    pcl::PCLPointCloud2::Ptr cloud (new pcl::PCLPointCloud2 ());
-    pcl::PCLPointCloud2::Ptr cloud_filtered (new pcl::PCLPointCloud2 ());
-
-    //fill in the cloud data
+    // Fill in the cloud data
     pcl::PCDReader reader;
-    //replace the data with our own data;
-    reader.read("table_scene_lms400.pcd", *cloud);
-    std::cerr << "Point before filtering :" << cloud->width * cloud->height
-              << "data points :(" << pcl::getFieldsList(*cloud)
-              << ")" << std::endl;
-    //create the filtering object
-    pcl::VoxelGrid<pcl::PCLPointCloud2>sor;
-    sor.setInputCloud(cloud);
-    sor.setLeafSize(0.01f,0.01f,0.01f);
-    sor.filter(*cloud_filtered);
-    std::cerr<<"Points cloud after filtering:"<<cloud_filtered->width*cloud_filtered->height
-             <<"data points ("<<pcl::getFieldsList(*cloud_filtered)<<")"
-             <<std::endl;
+    // Replace the path below with the path where you saved your file
+    reader.read<pcl::PointXYZ> ("origindataset.pcd", *cloud);
+
+    std::cerr << "Cloud before filtering: " << std::endl;
+    std::cerr << *cloud << std::endl;
+
+    // Create the filtering object
+    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+    sor.setInputCloud (cloud);
+    sor.setMeanK (50);
+    sor.setStddevMulThresh (0.5);
+    sor.filter (*cloud_filtered);
+
+    std::cerr << "Cloud after filtering: " << std::endl;
+    std::cerr << *cloud_filtered << std::endl;
+
     pcl::PCDWriter writer;
-    writer.write("voxel-downsampled.pcd",*cloud_filtered,Eigen::Vector4f::Zero(),
-                 Eigen::Quaternionf::Identity (), false);
-    return 0;
+    writer.write<pcl::PointXYZ> ("table_scene_lms400_inliers.pcd", *cloud_filtered, false);
+
+    sor.setNegative (true);
+    sor.filter (*cloud_filtered);
+    writer.write<pcl::PointXYZ> ("table_scene_lms400_outliers.pcd", *cloud_filtered, false);
+
+    return (0);
 }

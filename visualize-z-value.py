@@ -24,11 +24,11 @@ with open('value.txt') as f:
 xyz=np.array(result)
 
 x=xyz[:,0]
-y=xyz[:,1]
-z=xyz[:,2]
+# y=xyz[:,1]
+# z=xyz[:,2]
 
 
-plt.plot(z)
+plt.plot(x)
 plt.show()
 # x_max=np.max(x)
 # x_min=np.min(x)
