@@ -9,12 +9,6 @@ using namespace std;
 
 int main( int argc, char** argv )
 {
-
-
-
-
-
-
     double trainingData[14][4]={
           {197799, 797150, 0.005051, 0.994949 },
             {588544, 309165,0.102291, 0.897709 },
@@ -36,10 +30,7 @@ int main( int argc, char** argv )
 
             { 0.692253, 0.232505, 0.075242, 0.924758 },
             {0.766716,0.128947,0.104337 ,0.895663},
-
-
 };
-
     CvMat trainingDataCvMat = cvMat( 14, 4, CV_32FC1, trainingData );
 
     float responses[14] = { 399900, 369000, 539900, 314900, 212000, 239999, 329999,
