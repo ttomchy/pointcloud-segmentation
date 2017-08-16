@@ -3,15 +3,18 @@
 #include <pcl/point_types.h>
 #include <vector>
 #include <Eigen/Core>
-#include <Eigen/Eigenvalues>
-#include "./include/features.h"
-#include <pcl/kdtree/kdtree_flann.h> //kdtree类定义头文件
 #include <Eigen/Dense>
+#include "./include/features.h"
+#include <Eigen/Eigenvalues>
+#include <pcl/kdtree/kdtree_flann.h>
+
+#include <iomanip>
+
+
 using namespace Eigen;
 typedef pcl::PointXYZI PclPoint;
 typedef pcl::PointCloud<PclPoint> PointCloud;
 
-#include <fstream>
 
 
 PclPoint centroid;
@@ -126,30 +129,28 @@ void EigenvalueBasedDescriptor( pcl::PointCloud<PclPoint> & segment){
 //        feature_vec.push_back(e3 / sum_of_eigenvalues);//change_of_curvature
 
         Feature eigenvalue_feature;
-
-        PclPoint point_min, point_max;
-
-        double diff_x, diff_y, diff_z;
-
-        diff_x = point_max.x - point_min.x;
-        diff_y = point_max.y - point_min.y;
-        diff_z = point_max.z - point_min.z;
-
-        if (diff_z < diff_x && diff_z < diff_y) {
-            feature_vec.push_back(0.2);//pointing_up
-
-        } else {
-            feature_vec.push_back(0.0);//pointing_up
-        }
+//
+//        PclPoint point_min, point_max;
+//
+//        double diff_x, diff_y, diff_z;
+//
+//        diff_x = point_max.x - point_min.x;
+//        diff_y = point_max.y - point_min.y;
+//        diff_z = point_max.z - point_min.z;
+//
+//        if (diff_z < diff_x && diff_z < diff_y) {
+//            feature_vec.push_back(0.2);//pointing_up
+//
+//        } else {
+//            feature_vec.push_back(0.0);//pointing_up
+//        }
 
         vector<double>::iterator t;
         for (t = feature_vec.begin(); t != feature_vec.end(); t++) {
 
-            std::cout << *t << " ";//style="white-space:pre">  //不用科学计数法
+            std::cout <<std::fixed<< *t << " ";
 
         }
-        //std::cout<<segment.points[].<<std::endl;
-
 
 }
 
@@ -161,7 +162,7 @@ int main (int argc, char** argv) {
     // Fill in the cloud data
     pcl::PCDReader reader;
     // Replace the path below with the path where you saved your file
-    reader.read ("ori-dataset.pcd", *origin_cloud); // Remember to download the file first!
+    reader.read ("testdataset.pcd", *origin_cloud); // Remember to download the file first!
 
     std::cerr << "PointCloud before filtering: " << origin_cloud->width * origin_cloud->height
               << " data points (" << pcl::getFieldsList (*origin_cloud) << ")."<<std::endl;
@@ -226,7 +227,7 @@ int main (int argc, char** argv) {
         }
         else {
             EigenvalueBasedDescriptor(segment);
-            std::cout << searchPoint.intensity << std::endl;
+            std::cout << int(searchPoint.intensity) << std::endl;
         }
     }
 

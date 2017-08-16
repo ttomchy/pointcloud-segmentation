@@ -12,6 +12,29 @@ include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 
 add_definitions(-std=c++11)
+
+
+add_executable(random-forest random-forest.cpp )
+target_link_libraries( random-forest ${OpenCV_LIBS} )
+
+add_executable(test-opencv test-opencv.cpp )
+target_link_libraries(test-opencv ${OpenCV_LIBS} )
+
+add_executable( test-rdf test-rdf.cpp)
+target_link_libraries(test-rdf ${OpenCV_LIBS} )
+
+
+add_executable( RF_letter_recog RF_letter_recog.cpp)
+target_link_libraries(RF_letter_recog ${OpenCV_LIBS} )
+
+
+
+add_executable( cpp_read_data cpp_read_data.cpp )
+
+target_link_libraries(cpp_read_data ${OpenCV_LIBS} )
+
+
+
 #add_executable(filter filter.cpp)
 #target_link_libraries(filter ${PCL_LIBRARIES})
 #add_executable(statistical-filter statistical-filter.cpp )

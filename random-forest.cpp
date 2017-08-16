@@ -56,22 +56,15 @@ int main( int argc, char** argv )
     }
     fin.close();
 
-
-
-
-
     CvMat trainingDataCvMat = cvMat( row, col-1, CV_32FC1, training_data );
-
 
     CvMat responsesCvMat = cvMat( row, 1, CV_32FC1, lables );
 
-    CvRTParams params= CvRTParams(10, 400, 0, false,5, 0, true, 0, 100, 0, CV_TERMCRIT_ITER );
+    CvRTParams params= CvRTParams(10, 300, 0, false,5, 0, true, 0, 100, 0, CV_TERMCRIT_ITER );
 
     CvERTrees etrees;
     etrees.train(&trainingDataCvMat, CV_ROW_SAMPLE, &responsesCvMat,
                  Mat(), Mat(), Mat(), Mat(),params);
-
-
 
     /*******************************testing********************************************/
 //
@@ -84,17 +77,17 @@ int main( int argc, char** argv )
  //   CvMat testingdataset = cvMat( row, col-1, CV_32FC1, training_data );
 
 
-    char filename_test[512]="feature.txt";
+    char filename_test[512]="test_feature.txt";
     int LINES_test=CountLines(filename_test);
 
-    cout<<"The number of testing data lines is :"<<LINES_test<<endl;
+    cerr<<"The number of testing data lines is :"<<LINES_test<<endl;
 
     row=LINES_test ,col=5;     //n行 m列
 
 
     float testing_data[row][col-1];
     float testing_lables[row];
-    ifstream fin_test("feature.txt");         //打开文件//读入数字
+    ifstream fin_test("test_feature.txt");         //打开文件//读入数字
     for(int i=0;i<row;i++){
         for(int j=0;j<col;j++) {
             if(j<col-1){
@@ -106,32 +99,35 @@ int main( int argc, char** argv )
     }
     fin.close();
 
-
     Mat testing_dataCvMat= Mat( row, col-1, CV_32FC1, testing_data );
     Mat testing_lablesCvMat = Mat( row, 1, CV_32FC1, testing_lables );
 
+    std::cerr<<"The size of the testing_dataCvMat is :"<<testing_dataCvMat.rows
+             <<" "<<testing_dataCvMat.cols<<std::endl;
+    std::cerr<<"The size of the testing_lablesCvMat is:"<< testing_lablesCvMat.rows
+             <<" "<<testing_lablesCvMat.cols <<std::endl;
 
-//
-//    // 预测误差
-//    double train_hr = 0;
-//    double test_hr = 0;
-//
-//    for (int i=0; i<LINES_test; i++)
-//    {
-//        double r;
-//        Mat sample = testing_dataCvMat.rowRange(i).clone();
-//
-//        r = etrees.predict(sample);
-//        r = fabs((double)r - testing_lablesCvMat.at<float>(i,0)) <= FLT_EPSILON ? 1 : 0;
-//
-//            test_hr += r;
-//    }
-//
-//    test_hr /=LINES_test;
-//
-//    cout<<"The error is :"<<test_hr<<endl;
-//    printf( "Number of trees: %d\n", etrees.get_tree_count() );
+    // 预测误差
 
+    double test_hr = 0;
+
+    for (int i=0; i<LINES_test; i++)
+    {
+        double r;
+        Mat sample = testing_dataCvMat.rowRange(i,i+1).clone();
+      //  std::cout<<"The value  of the testing_dataCvMat("<<i<<") is:"<<sample<<std::endl;
+
+        
+        r = etrees.predict(sample);
+        std::cout<<"The value of r is :"<<i<<" "<<r<<" "<<testing_lablesCvMat.at<float>(i,0) <<std::endl;
+        r = fabs((double)r - testing_lablesCvMat.at<float>(i,0)) <= FLT_EPSILON ? 1 : 0;
+
+        test_hr += r;
+    }
+
+    test_hr /=LINES_test;
+
+    cerr<<"The accuracy rate is :"<<test_hr<<endl;
 
 
     return 0;
