@@ -4,23 +4,16 @@
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
-
 
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/common/common.h>
 #include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
 
 #include "./include/features.h"
 
 using namespace Eigen;
 typedef pcl::PointXYZI PclPoint;
-//typedef pcl::PointCloud<PclPoint> PointCloud;
 
-
-
-PclPoint centroid;
 
 template<typename T>
 bool swap_if_gt(T& a, T& b) {
@@ -32,108 +25,121 @@ bool swap_if_gt(T& a, T& b) {
 }
 
 using namespace std;
-void EigenvalueBasedDescriptor( pcl::PointCloud<PclPoint> & segment){
+
+
+void EigenvalueBasedDescriptor( pcl::PointCloud<PclPoint> & segment,float local_density, float lable){
+
+
+    vector<double> feature_vec;
+
+    PclPoint minPt, maxPt;
+
+    //获取坐标极值
+    pcl::getMinMax3D(segment, minPt, maxPt);
+    feature_vec.push_back(maxPt.z-minPt.z);//delta z
+
+    feature_vec.push_back(local_density);//local point density
+
 
     int kNPoints=segment.points.size();//get the number of the points
 
-        std::vector<std::vector<float>> vec;
-        std::vector<float> v1;
+    std::vector<std::vector<float>> vec;
+    std::vector<float> v1;
 
-        for (int i = 0; i < kNPoints; ++i) {
-            v1.push_back(segment.points[i].x);
-            v1.push_back(segment.points[i].y);
-            v1.push_back(segment.points[i].z);
-            vec.push_back(v1);
-            v1.clear();
+    for (int i = 0; i < kNPoints; ++i) {
+        v1.push_back(segment.points[i].x);
+        v1.push_back(segment.points[i].y);
+        v1.push_back(segment.points[i].z);
+        vec.push_back(v1);
+        v1.clear();
+    }
+
+    const int rows{kNPoints}, cols{3};
+
+    std::vector<float> vec_;
+    for (int i = 0; i < rows; ++i) {
+        vec_.insert(vec_.begin() + i * cols, vec[i].begin(), vec[i].end());
+    }
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> m(vec_.data(), rows, cols);
+
+    const int nsamples = rows;
+
+    Eigen::MatrixXf mean = m.colwise().mean();
+
+    Eigen::MatrixXf tmp(rows, cols);
+    for (int y = 0; y < rows; ++y) {
+        for (int x = 0; x < cols; ++x) {
+            tmp(y, x) = m(y, x) - mean(0, x);
         }
+    }
 
-        const int rows{kNPoints}, cols{3};
+    Eigen::MatrixXf covar = (tmp.adjoint() * tmp) / float(nsamples - 1);
+    //std::cout << "print covariance matrix: " << std::endl << covar << std::endl;
+    EigenSolver<Matrix3f> es(covar);
+    Matrix3f D = es.pseudoEigenvalueMatrix();
 
-        std::vector<float> vec_;
-        for (int i = 0; i < rows; ++i) {
-            vec_.insert(vec_.begin() + i * cols, vec[i].begin(), vec[i].end());
-        }
-        Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> m(vec_.data(), rows, cols);
+    //std::cout<<"The eigenvalue is :"<< std::endl;
+    //std::cout<<D<<std::endl;
 
-        const int nsamples = rows;
+    double e1 = D(0, 0);
+    double e2 = D(1, 1);
+    double e3 = D(2, 2);
 
-        Eigen::MatrixXf mean = m.colwise().mean();
+    // Sort eigenvalues from smallest to largest.
+    swap_if_gt(e1, e2);
+    swap_if_gt(e1, e3);
+    swap_if_gt(e2, e3);
+    //std::cout<<"The eigenvalue is e1:"<<  e1<< std::endl;
+    //std::cout<<"The eigenvalue is e2:"<<  e2<< std::endl;
+    //std::cout<<"The eigenvalue is e3:"<<  e3<< std::endl;
+    // Normalize eigenvalues.
 
-        Eigen::MatrixXf tmp(rows, cols);
-        for (int y = 0; y < rows; ++y) {
-            for (int x = 0; x < cols; ++x) {
-                tmp(y, x) = m(y, x) - mean(0, x);
-            }
-        }
+    double sum_eigenvalues = e1 + e2 + e3;
+    feature_vec.push_back(sum_eigenvalues); //sum of eigenvalues.
 
+    e1 = e1 / sum_eigenvalues;
+    e2 = e2 / sum_eigenvalues;
+    e3 = e3 / sum_eigenvalues;
 
-        Eigen::MatrixXf covar = (tmp.adjoint() * tmp) / float(nsamples - 1);
-        //std::cout << "print covariance matrix: " << std::endl << covar << std::endl;
-        EigenSolver<Matrix3f> es(covar);
-        Matrix3f D = es.pseudoEigenvalueMatrix();
+    // std::cout<<"The value of the gigenvalue e1 is :"<<e1<<std::endl;
+    //std::cout<<"The value of the gigenvalue e2 is :"<<e2<<std::endl;
+    // std::cout<<"The value of the gigenvalue e3 is :"<<e3<<std::endl;
 
-        //std::cout<<"The eigenvalue is :"<< std::endl;
-        //std::cout<<D<<std::endl;
+    if ((e1 == e2) || (e2 == e3) || (e1 == e3)) {
+        std::cerr << "The eigenvalue should not be equal!!!" << std::endl;
+    }
 
-        double e1 = D(0, 0);
-        double e2 = D(1, 1);
-        double e3 = D(2, 2);
+    const double sum_of_eigenvalues = e1 + e2 + e3;
+    double kOneThird = 1.0 / 3.0;
 
-        // Sort eigenvalues from smallest to largest.
-        swap_if_gt(e1, e2);
-        swap_if_gt(e1, e3);
-        swap_if_gt(e2, e3);
-        //std::cout<<"The eigenvalue is e1:"<<  e1<< std::endl;
-        //std::cout<<"The eigenvalue is e2:"<<  e2<< std::endl;
-        //std::cout<<"The eigenvalue is e3:"<<  e3<< std::endl;
-        // Normalize eigenvalues.
-        vector<double> feature_vec;
+    if (sum_of_eigenvalues == 0.0) {
+        std::cerr << "The sum of the eigenvalue is 0.0" << std::endl;
+    }
 
+    feature_vec.push_back((e1 - e2) / e1);//linearity
+    feature_vec.push_back((e2 - e3) / e1);//planarity
+    feature_vec.push_back(e3 / e1);//scattering
+    //feature_vec.push_back(std::pow(e1 * e2 * e3, kOneThird));//omnivariance
+    feature_vec.push_back((e1 - e3) / e1);//anisotropy
+    //feature_vec.push_back((e1 * std::log(e1)) + (e2 * std::log(e2)) + (e3 * std::log(e3)));//eigen_entropy
+    //feature_vec.push_back(e3 / sum_of_eigenvalues);//change_of_curvature
+    feature_vec.push_back( int (lable));
 
-        double sum_eigenvalues = e1 + e2 + e3;
-        feature_vec.push_back(sum_eigenvalues); //sum of eigenvalues.
-        e1 = e1 / sum_eigenvalues;
-        e2 = e2 / sum_eigenvalues;
-        e3 = e3 / sum_eigenvalues;
+    Feature eigenvalue_feature;
 
-        // std::cout<<"The value of the gigenvalue e1 is :"<<e1<<std::endl;
-        //std::cout<<"The value of the gigenvalue e2 is :"<<e2<<std::endl;
-        // std::cout<<"The value of the gigenvalue e3 is :"<<e3<<std::endl;
+    vector<double>::iterator t;
+    for (t = feature_vec.begin(); t != feature_vec.end(); t++) {
 
-        if ((e1 == e2) || (e2 == e3) || (e1 == e3)) {
-            std::cerr << "The eigenvalue should not be equal!!!" << std::endl;
-        }
+      std::cout <<std::fixed<< *t << " ";
 
-        const double sum_of_eigenvalues = e1 + e2 + e3;
-        double kOneThird = 1.0 / 3.0;
-
-        if (sum_of_eigenvalues == 0.0) {
-            std::cerr << "The sum of the eigenvalue is 0.0" << std::endl;
-        }
-
-
-
-        feature_vec.push_back((e1 - e2) / e1);//linearity
-        feature_vec.push_back((e2 - e3) / e1);//planarity
-        feature_vec.push_back(e3 / e1);//scattering
-        //feature_vec.push_back(std::pow(e1 * e2 * e3, kOneThird));//omnivariance
-        feature_vec.push_back((e1 - e3) / e1);//anisotropy
-        //feature_vec.push_back((e1 * std::log(e1)) + (e2 * std::log(e2)) + (e3 * std::log(e3)));//eigen_entropy
-        //feature_vec.push_back(e3 / sum_of_eigenvalues);//change_of_curvature
-
-
-        Feature eigenvalue_feature;
+    }
+    std::cout<<std::endl;
 
 
 
-        vector<double>::iterator t;
-        for (t = feature_vec.begin(); t != feature_vec.end(); t++) {
-
-            std::cout <<std::fixed<< *t << " ";
-
-        }
 
 }
+
 
 int main (int argc, char** argv) {
 
@@ -152,7 +158,6 @@ int main (int argc, char** argv) {
     //设置搜索空间
     kdtree.setInputCloud (origin_cloud);
     //设置查询点并赋随机值
-
 
     //For every point we try to find its neighbor points.
     for (size_t i = 0; i < origin_cloud->points.size (); ++i) {
@@ -175,17 +180,17 @@ int main (int argc, char** argv) {
         std::vector<int> pointIdxRadiusSearch;           //存储近邻索引
         std::vector<float> pointRadiusSquaredDistance;   //存储近邻对应距离的平方
 
-
         float radius = 0.6;//Here we set the radious is 0.4
         float local_density=0;
         pcl::PointCloud<PclPoint> segment;
+
         if (kdtree.radiusSearch(searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) >
             0){
+
             PclPoint searchPoint_res;
             pcl::PointXYZ point_local;
 
             for (size_t i = 0; i < pointIdxRadiusSearch.size(); ++i) {
-
 
 //
 //                std::cout << " "  << origin_cloud->points[ pointIdxRadiusSearch[i] ].x
@@ -200,7 +205,6 @@ int main (int argc, char** argv) {
                 searchPoint_res.intensity = origin_cloud->points[pointIdxRadiusSearch[i]].intensity;
                 segment.push_back(searchPoint_res);
 
-
                 point_local.x= origin_cloud->points[pointIdxRadiusSearch[i]].x;
                 point_local.y= origin_cloud->points[pointIdxRadiusSearch[i]].y;
                 point_local.z= origin_cloud->points[pointIdxRadiusSearch[i]].z;
@@ -210,26 +214,14 @@ int main (int argc, char** argv) {
 
         }
 
-
-
-
         int num_points=segment.points.size();//get the number of the points
         // if the point's neighborhoood points is two low ,we consider it must be a noise point
         if (num_points<=2){
             ;
         }
         else {
-            EigenvalueBasedDescriptor(segment);
 
-
-            //定义存储极值的两个点
-            PclPoint minPt, maxPt;
-
-            //获取坐标极值
-            pcl::getMinMax3D(segment, minPt, maxPt);
-            std::cout << maxPt.z-minPt.z<<" ";
-            std::cout<<local_density<<" ";//calculate the local_density
-            std::cout << int(searchPoint.intensity) << std::endl;//intensity is lables of the point cloud
+            EigenvalueBasedDescriptor(segment,local_density,searchPoint.intensity);
         }
     }
 
